@@ -191,37 +191,71 @@ def value_of_polynome(P, a):
 def derive(P: list[int]) -> list[int]:
     return [P[i] * i for i in range(1, len(P))]
 
-def racine(P, a, b):
-    a_value = value_of_polynome(P, a)
-    b_value = value_of_polynome(P, b)
-    if a_value * b_value > 0:
-        return a - 1
+def evaluation(P: list[int | float], a: int | float) -> int | float:
+
+    P_reduire = reduire(P)
+    if not P_reduire:
+        return 0
+
+    res = P_reduire[-1]
+    n = len(P_reduire)
+    for i in range(n - 2, -1, -1):
+        res = res * a + P_reduire[i]
     
-    x_curr = (a + b) / 2
-    P_i = max(P)
-    tolerance = P_i * 1e-15
-    max_iter = 100
-    for _ in range(max_iter):
-        f_val = value_of_polynome(P, x_curr)
-        
-        if abs(f_val) < tolerance:
-            return x_curr
-            
-        deriv_val = value_of_polynome(derive(P), x_curr)
-        
-        if deriv_val == 0:
-            break
-            
-        x_next = x_curr - f_val / deriv_val
-        
-        if not (a <= x_next <= b):
-            break 
-            
-        x_curr = x_next
+    return res
 
-        
+def racine(P, a, b):
+    if evaluation(P, a) * evaluation(P, b) >= 0:
+        return None  
 
+    dP = derive(P)
+    r = (a + b) / 2
+    M = max(abs(p) for p in P)
 
+    for _ in range(6):
+        r = r - evaluation(P, r) / evaluation(dP, r)
+
+    if a < r < b and abs(evaluation(P, r)) < 1e-15 * M:
+        return r
+
+    c = (a + b) / 2
+    val_c = evaluation(P, c)
+
+    if val_c == 0:
+        return c
+    elif evaluation(P, a) * val_c < 0:
+        return racine(P, a, c)
+    else:
+        return racine(P, c, b)
+
+def toutesracines(P):
+    xi = []
+    N = len(P) - 1
+    h = 1/ (N * N)
+    ak = [-1 + k * h for k in range(2 * N * N + 1)]
+    for k in range(2 * N * N):
+        if evaluation(P, ak[k]) == 0:
+            xi.append(ak[k])
+        if evaluation(P, ak[k]) * evaluation(P, ak[k+1]) < 0:
+            xi.append(racine(P, ak[k], ak[k+1]))
+    return xi
+
+def Gauss(N):
+    P = polyLegendre(N)
+    xi=toutesracines(P)
+    Ai=poids(xi)
+
+    return xi,Ai
+
+x6,A6 = Gauss(6)
+def integraleGauss(f,a,b,N):
+    h=(b-a)/N
+    t=[a+i*h for i in range(N)]
+    IN=0.
+    for i in range(N) :
+        for k in range(6):
+            IN+=h*A6[k]/2*f(t[i]+h*(x6[k]+1)/2)
+    return IN
 
 
 if __name__ == "__main__":
