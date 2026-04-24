@@ -250,7 +250,3 @@ $$
 E[X_n] = E\left[\sum_{i=0}^{n-1} \mathbf{1}_{\sigma(i)=i}\right] = \sum_{i=0}^{n-1} P(\sigma(i) = i) = \sum_{i=0}^{n-1} \frac{1}{n} = 1
 $$
 
-
-
-
-
