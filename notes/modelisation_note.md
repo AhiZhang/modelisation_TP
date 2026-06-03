@@ -1,4 +1,4 @@
-# 写在前面
+ # 写在前面
 这篇文档旨在从建模课的习题中提取出
 1. 思维量较大
 2. 解决方法独特
@@ -2224,6 +2224,341 @@ plt.show()
 - 时间步长 $h$  
 作微小扰动(10^{-8}),对比结果差异
 
+# TP9+TP10: Graphe
+~~为什么不先讲树呢?~~
+## 概念
+图 $G$ 是一个有序二元组 $(S,A)$ ,其中 $S$ 是 $G$ 的顶点(sommet)的集合, $A$ 是 $G$ 的边(arc)的集合
+
+
+## 图的存储方式
+### 邻接矩阵
+维护二维数组`adj_mat[i][j]`表示`i`与`j`之间是否有边,空间复杂度为 $O(n^2)$
+```Python
+class Graph():
+    def __init__(self. n):
+        self.n = n
+        self.adj_mat = [[] for _ in range(n)]
+```
+
+### 邻接表
+每个顶点维护一个数组,存储与其相连的顶点,更节省空间
+### 面向对象实现图
+每一个节点都是一个单独的对象,通过列表保存对其他节点的引用
+假设节点编号是连续的整数 $0,1,\dots,n-1$
+```Python
+class Graph:
+    def __init__(self, n):
+        self.n = n
+        self.adj = [[] for _ in range(n)]
+```
+我们使用第二种
+
+## 对图的操作
+### 增加节点
+```Python
+    def add_node(self) -> None:
+        self.n += 1
+        self.adj.append([])
+```
+
+### 增加某个节点的边
+```Python
+    def add_edge(self, u, v) -> None:
+        self.adj[u].append(v)
+        # 如果是无向图,还需要建立v->u的反向链接:
+        self.adj[v].append(u)
+```
+### 检测图是否是无向的
+无向图的定义:
+> 如果给图的每条边规定一个方向,那么得到的图称为有向图.在有向图中,与一个节点相关联的边有出边和入边之分.相反,边没有方向的图称为无向图
+
+简单来说,如果一个图存在一对节点 $A,B$,存在边 $AB$ 而不存在边 $BA$ ,则说这个图是有向的
+容易想到以下解法:
+```Python
+    def is_not_directed(self) -> bool:
+        n = self.n
+        for i in range(n):
+            for neighbor in self.adj[i]:
+                if i not in self.adj[neighbor]:
+                    return False
+
+        return True
+```
+但同时我们发现,这个算法的时间复杂度最坏会达到 $O(顶点数*边数)$ ,我们能把它优化到 $O(边数)$ ,只需检测一半的边即可:
+```Python
+    def is_undirected(self) -> bool:
+        n = self.n
+        for i in range(n):
+            for v in self.adj[u]:
+                if v > u:
+                    if u not in self.adj[v]:
+                        return False
+        return True
+```
+
+### 深度优先搜索(DFS, Depth-First-Search)
+深度优先搜索的过程如下:
+1. 从图中某点`start`出发
+2. 找到`start`的第一个未被访问的邻接点,以该点为新起点重复此步骤,知道刚刚访问过的节点没有未被访问的邻接点为止
+3. 返回前一个被访问过且尚有未被访问的邻接点的点,继续访问这个点下一个未被访问的邻接点
+
+我们能够通过栈\递归来实现深度优先搜索:
+```Python
+    def dfs_stack(self, start) -> list[int]:
+        stack = [start]
+        n = self.n
+        visited = [False for _ in range(n)]
+        visited[start] = True
+        res = []
+
+        while stack:
+            cur_p = stack.pop()
+            res.append(cur_p)
+
+            # 为什么用reversed?因为栈先进后出的特性,会导致我们先遍历到的节点在后面才被弹出,不加reversed其实也没啥大问题
+            for p_adj in reversed(self.adj[cur_p]):
+                if not visited[p_adj]:
+                    stack.append(p_adj)
+                    visited[p_adj] = True
+        
+        return res
+
+    def dfs_recu(self, start) -> list[int]:
+        n = self.n
+        visited = [False for _ in range(n)]
+        res = []
+        
+        def dfs(start) -> None:
+            res.append(start)
+            visited[start] = True
+
+            for adj in self.adj[start]:
+                if not visited[adj]:
+                    dfs(adj)
+
+        dfs(start)
+        return res
+
+```
+
+### 广度优先搜索(BFS,Breadth-First-Search)
+
+
+```Python
+    def bfs(self, start) -> list[int]:
+        q = clt.deque([start])
+        n = self.n
+        visited = [False for _ in range(n)]
+        res = []
+
+        while q:
+            cur_p = q.popleft()
+            res.append(cur_p)
+
+            for p_adj in self.adj[cur_p]:
+                if not visited[p_adj]:
+                    q.append(p_adj)
+                    visited[p_adj] = True
+
+        return res
+```
+
+### 检测图是否联通(connexe)
+在无向图里,如果`v1`到`v2`有路径,则称`v1`和`v2`是联通的,如果图中任意一对点都是联通的,则称这个图是联通的
+
+```Python
+    def is_connexe_bfs(self) -> bool:
+        n = self.n
+        if n == 0:
+            return True
+        
+        visited = [False for _ in range(n)]
+        visited[0] = True
+        count = 0
+        q = clt.deque([0])
+        while q:
+            cur_p = q.popleft()
+            count += 1
+            for p_adj in self.adj[cur_p]:
+                if not visited[p_adj]:
+                    q.append(p_adj)
+                    visited[p_adj] = True
+
+        return count == n
+
+    def is_connexe_dfs(self):
+        n = self.n
+        if n == 0:
+            return True
+        
+        visited = [False for _ in range(n)]
+        visited[0] = True
+        count = 0
+        s = [0]
+        while s:
+            cur_p = s.pop()
+            count += 1
+            for p_adj in self.adj[cur_p]:
+                if not visited[p_adj]:
+                    s.append(p_adj)
+                    visited[p_adj] = True
+```
+### Dijkstra算法
+Dijkstra(迪杰斯特拉,荷兰名字真难念)算法用于在给定图中查找某个顶点 $v$ 到其它顶点的最短路径,只适用于不含负边权的图
+算法的描述如下：
+1. 引入一个数组 `dis`，`dis[i]` 表示从初始点 $v$ 到每个顶点 $v_i$ 的距离
+2. 初始化 `dis` 数组，规则为：若从 $v$ 到 $v_i$ 有边，则 `dis[i]` 为该边的边权，若没有，则为正无穷；`dis[v]` 为 0
+3. 选择一个点 **$v_k$**,使得:
+   $$dis[k] = \min \{ dis[i] \mid v_i \in V - S \}$$
+   $v_k$ 就是当前求得的一条从 $v$ 出发的最短路径的终点,令 
+   $$S = S \cup \{v_k\}$$
+   ($S$ 代表已求出最短路径的顶点集合,$V-S$ 代表还未求出最短路径的顶点集合)
+4. 修改从 $v_k$ 出发到集合 $V-S$ 上的任一顶点 $v_i$ 可达的最短路径长度,如果
+   $$dis[k] + w_{ki} < dis[i]$$
+   则修改 $dis[i]$ 为
+   $$dis[k] + w_{ki}$$
+5. 重复操作 (3)(4) 共 $n-1$ 次
+实现:
+```Python
+class Graph:
+    def __init__(self, n):
+        self.n = n
+        # 每个元素是(邻居节点, 边权)的元组
+        self.adj = [[] for _ in range(n)]
+
+    def dijkstra(self, v) -> list[int]:
+        n = self.n
+        dis = [float('inf')] * n
+        dis[v] = 0
+        visited = [False] * n
+
+        for _ in range(n):
+
+            min_dist = float('inf')
+            u = -1
+            for i in range(n):
+                if not visited[i] and dis[i] < min_dist:
+                    min_dist = dis[i]
+                    u = i
+            
+            if u == -1:
+                break
+                
+            visited[u] = True
+            
+            for neighbor, weight in self.adj[u]:
+                if not visited[neighbor]:
+                    if dis[u] + weight < dis[neighbor]:
+                        dis[neighbor] = dis[u] + weight
+        
+        return dis
+```
+代码里有个嵌套循环,所以时间复杂度是 $O(n^2)$
+在外层循环里,我们每次都使用遍历来得到当前最短距离的节点,为了优化,我们能使用优先队列
+```Python
+import heapq
+
+    def dijkstra_opimized(self, v) -> list[int]:
+        n = self.n
+        dist = [float('inf')] * n
+        dist[start] = 0
+        heap = []
+        heapq.heappush(heap, (0, v))
+
+        while heap:
+            cur_dis, u = heapq.heappop(heap)
+
+            if cur_dis > dist[u]:
+                continue
+            for v, w in self.adj[u]:
+                if dist[v] > dist[u] + w:
+                    dist[v] = dist[u] + w
+                    heapq.heappush(heap, (dist[v], v))
+
+        return dist
+
+```
+### A*算法
+A*算法通过以下函数来计算每个点的优先级:
+$$f(n) = g(n) + h(n)$$
+其中:
+- $f(n)$ 是节点 $n$ 的综合优先级,在我们选择下一个要遍历的节点时,我们总是选择 $f(n)$ 最小的
+- $g(n)$ 是节点 $n$ 距离起点的代价
+- $h(n)$ 是节点 $n$ 距离终点的预计代价,也叫启发函数
+
+同时,这个算法维护`open_set`和`close_set`两个集合分别代表待检查的节点和已检查的节点
+
+
+###  A* 算法详细步骤
+
+1. 初始化`open_set`和`close_set`
+2. 将起点加入到`open_set`里,并设置优先级为0(最高)  
+3. 若`open_set`不为空,则选取优先级最高的节点 $n$:   
+    * 3.1 如果 $n$ 是终点:
+        * 从终点开始逐步追踪 `parent` 节点直到起点
+        * 返回找到的结果路径,算法结束
+    * 3.2 如果 $n$ 不是终点:
+        * 3.2.1 将 $n$ 从`open_set`移到`close_set`里
+        * 3.2.2 遍历 $n$ 的所有相邻节点 $m$:
+            * 3.2.2.1 若相邻节点 $m$ 在 `close_set` 里:
+                * 跳过，选取下一个节点。
+            * 3.2.2.2 若相邻节点 $m$ **不在** `open_set` 里:
+                * 3.2.2.2.1 设置 $m$ 的 `parent` 节点为 $n$
+                * 3.2.2.2.2 计算 $m$ 的优先级
+                * 3.2.2.2.3 将 $m$ 加入到 `open_set` 里
+
+---
+# TP11: 傅里叶变换
+数学占比较大,写不来
+
+# TP12: Programme Dynamique
+## 动态规划:以空间换时间
+在编程时,我们总会遇到一些求最优解的问题,如
+> 背包最大承重为 $V$ , 有 $n$ 件物品,第 $i$ 件物品重量 $w_i$ ,价值 $v_i$ ,每件物品只能选或者不选  
+> 求背包不超重的前提下,能装入的物品的最大总价值
+
+自然地,我们能够想到暴力解法,即处理所有物品在或者不在背包中的情况
+
+```Python
+
+```
+可见,代码遍历了所有子集,即使中间有剪枝,时间复杂度也到达了 $O(2^n)$ ,在知乎用户愿意交出那台算力无穷大的计算机前,这样的时间复杂度显然是不能接受的
+
+动态规划正是为这种情况而生的,我们首先将一个复杂的问题拆分成若干简单的小问题,比如把总承重为 $V$ 的背包所能装下的最大价值分解成总承重为 $1,2,...,V-1$ 的背包能装下的最大价值  
+显然,容量为 $1$ 的背包能装下的最大价值是
+$$
+dp[1]=\max\left\{\,v_i\;\big|\; w_i = 1\,\right\}
+$$
+对于任意容量 $j$ ,面对第 $i$ 件物品,我们都有两个选择:拿,或者不拿,为了使最后得到的价值最大,我们取这两种情况中的最大值:
+$$
+dp[j]=\max\big(\;dp[j],\; dp[j-w_i]+v_i\;\big),\quad j\ge w_i
+$$
+能总结出规律:
+$$
+dp[j]=\max\big(dp[j],dp[j-w_i]+v_i\big)
+$$
+大家把这种表示`dp`数组的某一项和前面的项的关系的公式叫递推公式,给人的感觉和数列很像  
+同样跟数列很像的还有需要规定初始值`dp[0]`,在这里
+$$
+dp[0]=0
+$$
+
+到这里,我们就能总结出动态规划的解题套路了:
+1. 定义状态: 我肯定要用一个dp数组,但这个数组应该是几维的?每个维度代表什么?
+2. 确定状态转移方程: 最重要的一步,某一项跟哪些项有关系?有什么关系?
+3. 初始化边界条件: 动态规划从何开始?一开始我们有哪些已知量?
+
+最后,别忘记题目要求的到底是`dp`哪个值,倒数第一个,倒数第二个还是别的?
+
+啊啊啊啊啊啊啊写这个好痛苦,我先去洗澡了
+
+
+
+
+
+
+
+---
 
 
 # 一些细节
